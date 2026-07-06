@@ -66,10 +66,10 @@
             font-weight: 700;
         }
 
-        /* 布局：左边栏 + 大王 + 主网格 + 小王 */
+        /* 布局：左边栏 + 大王小王列 + 主网格 */
         .main-layout {
             display: grid;
-            grid-template-columns: 50px auto 1fr auto;
+            grid-template-columns: 50px auto 1fr;
             gap: 4px;
             flex: 1;
             min-height: 0;
@@ -169,23 +169,26 @@
             padding: 3px;
             border-radius: 6px;
             overflow: auto;
-            scrollbar-width: thin;
-            -ms-overflow-style: thin;
+            scrollbar-width: auto;
+            -ms-overflow-style: auto;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
         }
 
         .main-grid::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 14px;
+            height: 14px;
         }
 
         .main-grid::-webkit-scrollbar-track {
             background: rgba(200,200,200,0.3);
-            border-radius: 4px;
+            border-radius: 7px;
         }
 
         .main-grid::-webkit-scrollbar-thumb {
             background: rgba(100,100,100,0.5);
-            border-radius: 4px;
+            border-radius: 7px;
+            min-height: 40px;
         }
 
         .main-grid::-webkit-scrollbar-thumb:hover {
@@ -234,7 +237,7 @@
         }
 
         .card {
-            aspect-ratio: 3/4;
+            aspect-ratio: 1/1;
             border-radius: 3px;
             cursor: pointer;
             display: flex;
@@ -244,7 +247,6 @@
             font-weight: 700;
             background: rgba(255,255,255,0.95);
             position: relative;
-            touch-action: manipulation;
             transition: transform 0.1s ease, background-color 0.05s ease;
             will-change: transform, background-color;
         }
@@ -382,18 +384,13 @@
                 </button>
             </div>
 
-            <!-- 大王列 -->
-            <div class="king-column" id="bigKingColumn">
+            <!-- 大王小王列 -->
+            <div class="king-column" id="kingColumn">
                 <div class="king-title">王</div>
             </div>
 
             <!-- 主网格：4花色×13点数 -->
             <div class="main-grid" id="cardGrid"></div>
-
-            <!-- 小王列 -->
-            <div class="king-column" id="smallKingColumn">
-                <div class="king-title">王</div>
-            </div>
         </div>
 
         <div class="footer">
@@ -409,9 +406,7 @@
         const VALUES = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
 
         let litCards = new Set();
-        let isBatchMode = false;
-        let lastBatchCard = null;
-        let mouseDown = false;
+        let isDraggingScroll = false;
 
         // 撤销/重做历史
         let history = [];
@@ -539,17 +534,13 @@
             const grid = document.getElementById('cardGrid');
             grid.innerHTML = '';
 
-            // 渲染大王列
-            const bigKingColumn = document.getElementById('bigKingColumn');
-            bigKingColumn.innerHTML = '<div class="king-title">王</div>';
+            // 渲染大王小王列（大王在上，小王在下）
+            const kingColumn = document.getElementById('kingColumn');
+            kingColumn.innerHTML = '<div class="king-title">王</div>';
             const bigKing = createCard('bigKing', 'big-king', '<span>大</span>');
-            bigKingColumn.appendChild(bigKing);
-
-            // 渲染小王列
-            const smallKingColumn = document.getElementById('smallKingColumn');
-            smallKingColumn.innerHTML = '<div class="king-title">王</div>';
+            kingColumn.appendChild(bigKing);
             const smallKing = createCard('smallKing', 'small-king', '<span>小</span>');
-            smallKingColumn.appendChild(smallKing);
+            kingColumn.appendChild(smallKing);
 
             // 渲染花色标题行
             SUITS.forEach(s => {
@@ -602,37 +593,74 @@
             setTimeout(() => card.classList.remove('just-toggled'), 80);
         }
 
+        // ── 触摸/鼠标 滑动点亮（区分滚动 vs 点亮）──
+        let touchStartX = 0, touchStartY = 0;
+        let touchStartTime = 0;
+        let touchHasMoved = false;
+        let touchLastCardEl = null;
+        let swipeDirection = null;       // 'vertical' | 'horizontal' | null
+        const MOVE_THRESHOLD = 10;       // 超过此像素才判断方向
+
         function handleTouchStart(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            isBatchMode = true;
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTime = Date.now();
+            touchHasMoved = false;
+            swipeDirection = null;
+
             const card = e.target.closest('.card');
-            if (card && card.dataset.key) {
+            touchLastCardEl = (card && card.dataset.key) ? card : null;
+
+            if (touchLastCardEl) {
                 batchSnapshot = [...litCards];
-                // 立即高亮反馈
-                const key = card.dataset.key;
+                // 立即反馈首张卡片（体验更好）
+                const key = touchLastCardEl.dataset.key;
                 if (litCards.has(key)) {
                     litCards.delete(key);
-                    card.classList.remove('lit');
+                    touchLastCardEl.classList.remove('lit');
                 } else {
                     litCards.add(key);
-                    card.classList.add('lit');
-                    addJustToggled(card);
+                    touchLastCardEl.classList.add('lit');
+                    addJustToggled(touchLastCardEl);
                 }
                 updateProgress();
                 updateSaveSlots();
-                lastBatchCard = card;
             }
         }
 
         function handleTouchMove(e) {
-            if (!isBatchMode) return;
+            if (!touchLastCardEl) return;
+
+            const touch = e.touches[0];
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+            const totalMove = Math.abs(dx) + Math.abs(dy);
+
+            if (totalMove < MOVE_THRESHOLD) return;
+
+            touchHasMoved = true;
+
+            // 首次超过阈值：判断滑动方向
+            if (!swipeDirection) {
+                if (Math.abs(dy) > Math.abs(dx) * 1.2) {
+                    // 垂直为主 → 滚动模式，交浏览器处理
+                    swipeDirection = 'vertical';
+                    return;
+                } else {
+                    // 水平为主 → 滑动点亮模式
+                    swipeDirection = 'horizontal';
+                }
+            }
+
+            if (swipeDirection === 'vertical') return; // 浏览器处理滚动
+
+            // 水平滑动点亮：阻止浏览器行为，连续点亮经过的卡片
             e.preventDefault();
             e.stopPropagation();
-            const touch = e.touches[0];
             const element = document.elementFromPoint(touch.clientX, touch.clientY);
             const card = element ? element.closest('.card') : null;
-            if (card && card !== lastBatchCard && card.dataset.key) {
+            if (card && card !== touchLastCardEl && card.dataset.key) {
                 const key = card.dataset.key;
                 if (!litCards.has(key)) {
                     litCards.add(key);
@@ -641,23 +669,31 @@
                     updateProgress();
                     updateSaveSlots();
                 }
-                lastBatchCard = card;
+                touchLastCardEl = card;
             }
         }
 
         function handleTouchEnd(e) {
-            e.preventDefault();
+            if (swipeDirection === 'horizontal') {
+                e.preventDefault();
+            }
+
+            // 保存历史（无论是 tap 还是滑动点亮）
             if (batchSnapshot) {
-                saveHistory();
+                const current = [...litCards];
+                if (JSON.stringify(current) !== JSON.stringify(batchSnapshot)) {
+                    saveHistory();
+                }
                 batchSnapshot = null;
             }
-            isBatchMode = false;
-            lastBatchCard = null;
+
+            touchLastCardEl = null;
+            swipeDirection = null;
+            touchHasMoved = false;
         }
 
         function handleMouseDown(e) {
             e.preventDefault();
-            isBatchMode = true;
             const card = e.target.closest('.card');
             if (card && card.dataset.key) {
                 batchSnapshot = [...litCards];
@@ -672,14 +708,14 @@
                 }
                 updateProgress();
                 updateSaveSlots();
-                lastBatchCard = card;
+                touchLastCardEl = card;
             }
         }
 
         function handleMouseEnter(e) {
-            if (!isBatchMode || !lastBatchCard) return;
+            if (!touchLastCardEl) return;
             const card = e.target.closest('.card');
-            if (card && card !== lastBatchCard && card.dataset.key) {
+            if (card && card !== touchLastCardEl && card.dataset.key) {
                 const key = card.dataset.key;
                 if (!litCards.has(key)) {
                     litCards.add(key);
@@ -688,17 +724,19 @@
                     updateProgress();
                     updateSaveSlots();
                 }
-                lastBatchCard = card;
+                touchLastCardEl = card;
             }
         }
 
         function handleMouseUp() {
             if (batchSnapshot) {
-                saveHistory();
+                const current = [...litCards];
+                if (JSON.stringify(current) !== JSON.stringify(batchSnapshot)) {
+                    saveHistory();
+                }
                 batchSnapshot = null;
             }
-            isBatchMode = false;
-            lastBatchCard = null;
+            touchLastCardEl = null;
         }
 
         function toggleCard(card) {
@@ -737,7 +775,6 @@
         document.addEventListener('mouseup', () => {
             handleMouseUp();
             isDraggingScroll = false;
-            document.body.style.cursor = '';
         });
         document.addEventListener('mouseleave', () => {
             handleMouseUp();
