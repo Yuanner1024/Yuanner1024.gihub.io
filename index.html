@@ -66,10 +66,10 @@
             font-weight: 700;
         }
 
-        /* 布局：左边栏 + 主网格 + 滚动条 */
+        /* 布局：左边栏 + 大王 + 主网格 + 小王 */
         .main-layout {
             display: grid;
-            grid-template-columns: 50px 1fr 40px;
+            grid-template-columns: 50px auto 1fr auto;
             gap: 4px;
             flex: 1;
             min-height: 0;
@@ -162,20 +162,63 @@
         /* 主网格 */
         .main-grid {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             grid-template-rows: repeat(14, 1fr);
             gap: 3px;
             background: rgba(170,170,170,0.5);
             padding: 3px;
             border-radius: 6px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            overflow: auto;
+            scrollbar-width: thin;
+            -ms-overflow-style: thin;
         }
 
         .main-grid::-webkit-scrollbar {
-            display: none;
+            width: 8px;
+            height: 8px;
+        }
+
+        .main-grid::-webkit-scrollbar-track {
+            background: rgba(200,200,200,0.3);
+            border-radius: 4px;
+        }
+
+        .main-grid::-webkit-scrollbar-thumb {
+            background: rgba(100,100,100,0.5);
+            border-radius: 4px;
+        }
+
+        .main-grid::-webkit-scrollbar-thumb:hover {
+            background: rgba(80,80,80,0.7);
+        }
+
+        .main-grid::-webkit-scrollbar-corner {
+            background: rgba(200,200,200,0.3);
+        }
+
+        /* 大王小王列 */
+        .king-column {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .king-column .card {
+            width: 100%;
+            min-width: 30px;
+        }
+
+        .king-title {
+            text-align: center;
+            padding: 2px;
+            font-size: 0.5rem;
+            font-weight: 700;
+            background: rgba(232,232,232,0.8);
+            border-radius: 3px;
+            min-height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .suit-title {
@@ -191,7 +234,7 @@
         }
 
         .card {
-            aspect-ratio: 4/3;
+            aspect-ratio: 3/4;
             border-radius: 3px;
             cursor: pointer;
             display: flex;
@@ -253,27 +296,6 @@
         .empty-cell {
             background: transparent;
             pointer-events: none;
-        }
-
-        /* 右侧滚动条 */
-        .scrollbar-track {
-            width: 8px;
-            background: rgba(200,200,200,0.5);
-            border-radius: 4px;
-            position: relative;
-            cursor: pointer;
-        }
-
-        .scrollbar-thumb {
-            position: absolute;
-            width: 100%;
-            background: rgba(100,100,100,0.6);
-            border-radius: 4px;
-            transition: transform 0.1s ease;
-        }
-
-        .scrollbar-thumb:hover {
-            background: rgba(80,80,80,0.7);
         }
 
         /* 底部 */
@@ -360,12 +382,17 @@
                 </button>
             </div>
 
-            <!-- 主网格 -->
+            <!-- 大王列 -->
+            <div class="king-column" id="bigKingColumn">
+                <div class="king-title">王</div>
+            </div>
+
+            <!-- 主网格：4花色×13点数 -->
             <div class="main-grid" id="cardGrid"></div>
 
-            <!-- 右侧滚动条 -->
-            <div class="scrollbar-track" id="scrollTrack">
-                <div class="scrollbar-thumb" id="scrollThumb"></div>
+            <!-- 小王列 -->
+            <div class="king-column" id="smallKingColumn">
+                <div class="king-title">王</div>
             </div>
         </div>
 
@@ -512,11 +539,19 @@
             const grid = document.getElementById('cardGrid');
             grid.innerHTML = '';
 
-            const bigKingTitle = document.createElement('div');
-            bigKingTitle.className = 'suit-title';
-            bigKingTitle.textContent = '王';
-            grid.appendChild(bigKingTitle);
+            // 渲染大王列
+            const bigKingColumn = document.getElementById('bigKingColumn');
+            bigKingColumn.innerHTML = '<div class="king-title">王</div>';
+            const bigKing = createCard('bigKing', 'big-king', '<span>大</span>');
+            bigKingColumn.appendChild(bigKing);
 
+            // 渲染小王列
+            const smallKingColumn = document.getElementById('smallKingColumn');
+            smallKingColumn.innerHTML = '<div class="king-title">王</div>';
+            const smallKing = createCard('smallKing', 'small-king', '<span>小</span>');
+            smallKingColumn.appendChild(smallKing);
+
+            // 渲染花色标题行
             SUITS.forEach(s => {
                 const t = document.createElement('div');
                 t.className = 'suit-title';
@@ -524,21 +559,8 @@
                 grid.appendChild(t);
             });
 
-            const smallKingTitle = document.createElement('div');
-            smallKingTitle.className = 'suit-title';
-            smallKingTitle.textContent = '王';
-            grid.appendChild(smallKingTitle);
-
+            // 渲染牌面
             [...VALUES].reverse().forEach(value => {
-                if (value === '2') {
-                    const bigKing = createCard('bigKing', 'big-king', '<span>大</span>');
-                    grid.appendChild(bigKing);
-                } else {
-                    const empty = document.createElement('div');
-                    empty.className = 'empty-cell';
-                    grid.appendChild(empty);
-                }
-
                 SUITS.forEach((_, suitIdx) => {
                     const key = `${suitIdx}_${value}`;
                     const card = createCard(key, '', value);
@@ -549,15 +571,6 @@
                     }
                     grid.appendChild(card);
                 });
-
-                if (value === '2') {
-                    const smallKing = createCard('smallKing', 'small-king', '<span>小</span>');
-                    grid.appendChild(smallKing);
-                } else {
-                    const empty = document.createElement('div');
-                    empty.className = 'empty-cell';
-                    grid.appendChild(empty);
-                }
             });
         }
 
@@ -730,123 +743,6 @@
             handleMouseUp();
             isDraggingScroll = false;
         });
-
-        // 滚动条功能
-        const scrollTrack = document.getElementById('scrollTrack');
-        const scrollThumb = document.getElementById('scrollThumb');
-        const cardGrid = document.getElementById('cardGrid');
-        let isDraggingScroll = false;
-        let scrollStartY = 0;
-        let thumbStartY = 0;
-
-        function updateScrollThumb() {
-            const grid = cardGrid;
-            const trackHeight = scrollTrack.offsetHeight;
-            const thumbHeight = Math.max((grid.clientHeight / grid.scrollHeight) * trackHeight, 30);
-            const maxThumbTop = trackHeight - thumbHeight;
-            const thumbTop = (grid.scrollTop / (grid.scrollHeight - grid.clientHeight)) * maxThumbTop;
-
-            scrollThumb.style.height = thumbHeight + 'px';
-            scrollThumb.style.top = thumbTop + 'px';
-        }
-
-        cardGrid.addEventListener('scroll', updateScrollThumb);
-
-        scrollThumb.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            isDraggingScroll = true;
-            scrollStartY = e.touches ? e.touches[0].clientY : e.clientY;
-            thumbStartY = scrollThumb.offsetTop;
-        }, { passive: false });
-
-        scrollThumb.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            isDraggingScroll = true;
-            scrollStartY = e.clientY;
-            thumbStartY = scrollThumb.offsetTop;
-            document.body.style.cursor = 'grabbing';
-        });
-
-        scrollTrack.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touchY = e.touches[0].clientY;
-            const trackRect = scrollTrack.getBoundingClientRect();
-            const clickY = touchY - trackRect.top;
-            const thumbHeight = scrollThumb.offsetHeight;
-            const thumbTop = scrollThumb.offsetTop;
-            const maxThumbTop = trackRect.height - thumbHeight;
-
-            // 点击滚动条空白区域，跳转
-            if (clickY < thumbTop || clickY > thumbTop + thumbHeight) {
-                const targetThumbTop = clickY - thumbHeight / 2;
-                const grid = cardGrid;
-                const ratio = Math.max(0, Math.min(1, targetThumbTop / maxThumbTop));
-                grid.scrollTop = ratio * (grid.scrollHeight - grid.clientHeight);
-            }
-        }, { passive: false });
-
-        scrollTrack.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            const clickY = e.clientY;
-            const trackRect = scrollTrack.getBoundingClientRect();
-            const clickRelativeY = clickY - trackRect.top;
-            const thumbHeight = scrollThumb.offsetHeight;
-            const thumbTop = scrollThumb.offsetTop;
-            const maxThumbTop = trackRect.height - thumbHeight;
-
-            // 点击滚动条空白区域，跳转
-            if (clickRelativeY < thumbTop || clickRelativeY > thumbTop + thumbHeight) {
-                const targetThumbTop = clickRelativeY - thumbHeight / 2;
-                const grid = cardGrid;
-                const ratio = Math.max(0, Math.min(1, targetThumbTop / maxThumbTop));
-                grid.scrollTop = ratio * (grid.scrollHeight - grid.clientHeight);
-            }
-        });
-
-        document.addEventListener('touchmove', (e) => {
-            if (!isDraggingScroll) return;
-            e.preventDefault();
-            const touchY = e.touches[0].clientY;
-            const deltaY = touchY - scrollStartY;
-            const grid = cardGrid;
-            const trackHeight = scrollTrack.offsetHeight;
-            const thumbHeight = scrollThumb.offsetHeight;
-            const maxThumbTop = trackHeight - thumbHeight;
-            const newThumbTop = Math.max(0, Math.min(maxThumbTop, thumbStartY + deltaY));
-            const ratio = newThumbTop / maxThumbTop;
-
-            grid.scrollTop = ratio * (grid.scrollHeight - grid.clientHeight);
-        }, { passive: false });
-
-        document.addEventListener('touchend', () => {
-            isDraggingScroll = false;
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDraggingScroll) return;
-            e.preventDefault();
-            const deltaY = e.clientY - scrollStartY;
-            const grid = cardGrid;
-            const trackHeight = scrollTrack.offsetHeight;
-            const thumbHeight = scrollThumb.offsetHeight;
-            const maxThumbTop = trackHeight - thumbHeight;
-            const newThumbTop = Math.max(0, Math.min(maxThumbTop, thumbStartY + deltaY));
-            const ratio = newThumbTop / maxThumbTop;
-
-            grid.scrollTop = ratio * (grid.scrollHeight - grid.clientHeight);
-        });
-
-        // 鼠标滚轮支持
-        cardGrid.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const delta = e.deltaY || e.wheelDelta;
-            cardGrid.scrollTop += delta * 0.5;
-        }, { passive: false });
-
-        // 初始化
-        setTimeout(updateScrollThumb, 100);
-        window.addEventListener('resize', updateScrollThumb);
 
         loadState();
     </script>
