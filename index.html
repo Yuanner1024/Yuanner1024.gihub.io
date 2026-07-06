@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>【菜菜大王】阿萨拉牌图鉴</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            overscroll-behavior: none;
+            touch-action: none;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: url('./background.jpg') no-repeat center center;
+            background-size: cover;
+            min-height: 100vh;
+            padding: 6px;
+            touch-action: pan-y;
+        }
+
+        .container {
+            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 6px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        .title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 3px;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .progress {
+            font-size: 0.8rem;
+            color: #666;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .progress-count {
+            color: #32CD32;
+            font-weight: 700;
+        }
+
+        .header-btns {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .header-btns .action-btn {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.6rem;
+            cursor: pointer;
+            touch-action: manipulation;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .header-btns .action-btn:active:not(:disabled) {
+            transform: scale(0.93);
+            opacity: 0.8;
+        }
+
+        .header-btns .action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .header-btns .action-btn.undo {
+            background: rgba(255,243,224,0.9);
+            border-color: #ffcc80;
+        }
+
+        .header-btns .action-btn.redo {
+            background: rgba(227,242,253,0.9);
+            border-color: #90caf9;
+        }
+
+        .header-btns .action-btn.load {
+            background: rgba(252,228,236,0.9);
+            border-color: #f48fb1;
+        }
+
+        /* 布局：左边栏 + 主网格 + 滚动条 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 50px 1fr 40px;
+            gap: 4px;
+            flex: 1;
+            min-height: 0;
+            height: calc(100vh - 80px);
+        }
+
+        /* 左边栏 */
+        .left-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .save-slot {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 6px;
+            font-size: 0.6rem;
+            text-align: center;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .save-slot.manual {
+            background: rgba(255,243,224,0.9);
+            border-color: #ffcc80;
+        }
+
+        .save-slot:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+
+        .save-slot span {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .save-slot .count {
+            font-size: 0.55rem;
+            color: #666;
+        }
+
+        /* 主网格 */
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(14, 1fr);
+            gap: 3px;
+            background: rgba(170,170,170,0.5);
+            padding: 3px;
+            border-radius: 6px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .main-grid::-webkit-scrollbar {
+            display: none;
+        }
+
+        .suit-title {
+            text-align: center;
+            padding: 2px;
+            font-size: 0.55rem;
+            font-weight: 700;
+            background: rgba(232,232,232,0.8);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            aspect-ratio: 4/3;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.95);
+            position: relative;
+            touch-action: manipulation;
+            transition: transform 0.1s ease, background-color 0.05s ease;
+            will-change: transform, background-color;
+        }
+
+        .card:active {
+            transform: scale(0.92);
+        }
+
+        .card.lit {
+            background: #32CD32 !important;
+        }
+
+        .card.just-toggled {
+            transform: scale(0.88);
+        }
+
+        .card.lit::after {
+            content: "✓";
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            background: white;
+            color: #228B22;
+            border-radius: 50%;
+            font-size: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card.big-king,
+        .card.small-king {
+            background: linear-gradient(135deg, #ffd700, #ffb347);
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #8b4513;
+        }
+
+        .card.big-king span,
+        .card.small-king span {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .empty-cell {
+            background: transparent;
+            pointer-events: none;
+        }
+
+        /* 右侧滚动条 */
+        .scrollbar-track {
+            width: 8px;
+            background: rgba(200,200,200,0.5);
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .scrollbar-thumb {
+            position: absolute;
+            width: 100%;
+            background: rgba(100,100,100,0.6);
+            border-radius: 4px;
+            transition: transform 0.1s ease;
+        }
+
+        .scrollbar-thumb:hover {
+            background: rgba(80,80,80,0.7);
+        }
+
+        .action-btn {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 6px;
+            font-size: 0.55rem;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+            transition: transform 0.1s ease;
+        }
+
+        .action-btn:active:not(:disabled) {
+            transform: scale(0.93);
+            opacity: 0.8;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .action-btn.undo {
+            background: rgba(255,243,224,0.9);
+            border-color: #ffcc80;
+        }
+
+        .action-btn.redo {
+            background: rgba(227,242,253,0.9);
+            border-color: #90caf9;
+        }
+
+        .action-btn.load {
+            background: rgba(252,228,236,0.9);
+            border-color: #f48fb1;
+        }
+
+        .action-btn .icon {
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+
+        /* 底部 */
+        .footer {
+            text-align: center;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .reset-btn {
+            background: rgba(255,255,255,0.9);
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            border-radius: 12px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .reset-btn:active {
+            transform: scale(0.95);
+            background: #e74c3c;
+            color: white;
+        }
+
+        .hint {
+            text-align: center;
+            color: #555;
+            font-size: 0.6rem;
+            margin-top: 3px;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        /* Toast提示 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.75);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🃏【菜菜大王】阿萨拉牌图鉴</h1>
+            <div class="progress">
+                已点亮：<span class="progress-count" id="litCount">0</span> / 54
+            </div>
+            <div class="header-btns">
+                <button class="action-btn undo" ontouchstart="undo()" onclick="undo()" id="undoBtn" disabled>↩撤回</button>
+                <button class="action-btn redo" ontouchstart="redo()" onclick="redo()" id="redoBtn" disabled>↪重做</button>
+                <button class="action-btn load" ontouchstart="loadManual()" onclick="loadManual()">📂读取</button>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <!-- 左边栏：保存槽 -->
+            <div class="left-sidebar">
+                <div class="save-slot manual" ontouchstart="saveManual()" onclick="saveManual()">
+                    <span>保存</span>
+                    <span class="count" id="manualCount">未保存</span>
+                </div>
+            </div>
+
+            <!-- 主网格 -->
+            <div class="main-grid" id="cardGrid"></div>
+
+            <!-- 右侧滚动条 -->
+            <div class="scrollbar-track" id="scrollTrack">
+                <div class="scrollbar-thumb" id="scrollThumb"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <button class="reset-btn" ontouchstart="resetAll()" onclick="resetAll()">重置</button>
+        </div>
+        <p class="hint">点击/滑动点亮 | 左侧保存</p>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const SUITS = ['♠', '♥', '♣', '♦'];
+        const VALUES = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+
+        let litCards = new Set();
+        let isBatchMode = false;
+        let lastBatchCard = null;
+        let mouseDown = false;
+
+        // 撤销/重做历史
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 50;
+
+        // 手动保存的数据
+        let manualSave = null;
+
+        // 批量操作前的状态快照（用于一次性保存整步）
+        let batchSnapshot = null;
+
+        function loadState() {
+            // 加载自动保存
+            const saved = localStorage.getItem('caicaiLitCards_v10');
+            if (saved) litCards = new Set(JSON.parse(saved));
+
+            // 加载历史
+            const historySaved = localStorage.getItem('caicaiLitCards_history');
+            if (historySaved) {
+                const data = JSON.parse(historySaved);
+                history = data.history || [];
+                historyIndex = data.historyIndex || -1;
+            }
+
+            // 加载手动保存
+            const manualSaved = localStorage.getItem('caicaiLitCards_manual');
+            if (manualSaved) manualSave = new Set(JSON.parse(manualSaved));
+
+            render();
+            updateProgress();
+            updateHistoryButtons();
+            updateSaveSlots();
+        }
+
+        function saveState() {
+            localStorage.setItem('caicaiLitCards_v10', JSON.stringify([...litCards]));
+            updateSaveSlots();
+        }
+
+        function saveHistory() {
+            // 添加到历史
+            const currentState = [...litCards];
+            history = history.slice(0, historyIndex + 1);
+            history.push(currentState);
+            if (history.length > MAX_HISTORY) {
+                history.shift();
+            } else {
+                historyIndex++;
+            }
+            localStorage.setItem('caicaiLitCards_history', JSON.stringify({history, historyIndex}));
+            updateHistoryButtons();
+        }
+
+        function undo() {
+            if (historyIndex < 0) return;
+            if (historyIndex === history.length - 1) {
+                // 当前状态也要保存
+                history.push([...litCards]);
+            }
+            historyIndex--;
+            litCards = new Set(history[historyIndex] || []);
+            render();
+            updateProgress();
+            saveState();
+            updateHistoryButtons();
+            showToast('已撤回');
+        }
+
+        function redo() {
+            if (historyIndex >= history.length - 1) return;
+            historyIndex++;
+            litCards = new Set(history[historyIndex] || []);
+            render();
+            updateProgress();
+            saveState();
+            updateHistoryButtons();
+            showToast('已重做');
+        }
+
+        function updateHistoryButtons() {
+            document.getElementById('undoBtn').disabled = historyIndex < 0;
+            document.getElementById('redoBtn').disabled = historyIndex >= history.length - 1;
+        }
+
+        // 手动保存
+        function saveManual() {
+            manualSave = new Set([...litCards]);
+            localStorage.setItem('caicaiLitCards_manual', JSON.stringify([...manualSave]));
+            updateSaveSlots();
+            showToast('已保存 ' + litCards.size + ' 张');
+        }
+
+        // 离开网页时自动保存当前进度
+        window.addEventListener('beforeunload', () => {
+            saveState();
+        });
+
+        // 读取手动存档
+        function loadManual() {
+            if (!manualSave || manualSave.size === 0) {
+                showToast('无手动存档');
+                return;
+            }
+            saveHistory();
+            litCards = new Set([...manualSave]);
+            render();
+            updateProgress();
+            saveState();
+            showToast('已读取 ' + litCards.size + ' 张');
+        }
+
+        function updateSaveSlots() {
+            document.getElementById('manualCount').textContent = manualSave ? manualSave.size + '张' : '未保存';
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1500);
+        }
+
+        function render() {
+            const grid = document.getElementById('cardGrid');
+            grid.innerHTML = '';
+
+            const bigKingTitle = document.createElement('div');
+            bigKingTitle.className = 'suit-title';
+            bigKingTitle.textContent = '王';
+            grid.appendChild(bigKingTitle);
+
+            SUITS.forEach(s => {
+                const t = document.createElement('div');
+                t.className = 'suit-title';
+                t.textContent = s;
+                grid.appendChild(t);
+            });
+
+            const smallKingTitle = document.createElement('div');
+            smallKingTitle.className = 'suit-title';
+            smallKingTitle.textContent = '王';
+            grid.appendChild(smallKingTitle);
+
+            [...VALUES].reverse().forEach(value => {
+                if (value === '2') {
+                    const bigKing = createCard('bigKing', 'big-king', '<span>大</span>');
+                    grid.appendChild(bigKing);
+                } else {
+                    const empty = document.createElement('div');
+                    empty.className = 'empty-cell';
+                    grid.appendChild(empty);
+                }
+
+                SUITS.forEach((_, suitIdx) => {
+                    const key = `${suitIdx}_${value}`;
+                    const card = createCard(key, '', value);
+                    if (suitIdx === 1 || suitIdx === 3) {
+                        card.style.color = '#c0392b';
+                    } else {
+                        card.style.color = '#2c3e50';
+                    }
+                    grid.appendChild(card);
+                });
+
+                if (value === '2') {
+                    const smallKing = createCard('smallKing', 'small-king', '<span>小</span>');
+                    grid.appendChild(smallKing);
+                } else {
+                    const empty = document.createElement('div');
+                    empty.className = 'empty-cell';
+                    grid.appendChild(empty);
+                }
+            });
+        }
+
+        function createCard(key, extraClass, text) {
+            const card = document.createElement('div');
+            card.className = 'card ' + extraClass;
+            card.dataset.key = key;
+            card.innerHTML = text;
+
+            if (litCards.has(key)) {
+                card.classList.add('lit');
+            }
+
+            // 触摸事件
+            card.addEventListener('touchstart', handleTouchStart, { passive: false });
+            card.addEventListener('touchmove', handleTouchMove, { passive: false });
+            card.addEventListener('touchend', handleTouchEnd, { passive: false });
+            card.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+            // 鼠标事件（桌面端）
+            card.addEventListener('mousedown', handleMouseDown);
+            card.addEventListener('mouseenter', handleMouseEnter);
+
+            return card;
+        }
+
+        function addJustToggled(card) {
+            card.classList.add('just-toggled');
+            setTimeout(() => card.classList.remove('just-toggled'), 80);
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            isBatchMode = true;
+            const card = e.target.closest('.card');
+            if (card && card.dataset.key) {
+                batchSnapshot = [...litCards];
+                // 立即高亮反馈
+                const key = card.dataset.key;
+                if (litCards.has(key)) {
+                    litCards.delete(key);
+                    card.classList.remove('lit');
+                } else {
+                    litCards.add(key);
+                    card.classList.add('lit');
+                    addJustToggled(card);
+                }
+                updateProgress();
+                updateSaveSlots();
+                lastBatchCard = card;
+            }
+        }
+
+        function handleTouchMove(e) {
+            if (!isBatchMode) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const card = element ? element.closest('.card') : null;
+            if (card && card !== lastBatchCard && card.dataset.key) {
+                const key = card.dataset.key;
+                if (!litCards.has(key)) {
+                    litCards.add(key);
+                    card.classList.add('lit');
+                    addJustToggled(card);
+                    updateProgress();
+                    updateSaveSlots();
+                }
+                lastBatchCard = card;
+            }
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            if (batchSnapshot) {
+                saveHistory();
+                batchSnapshot = null;
+            }
+            isBatchMode = false;
+            lastBatchCard = null;
+        }
+
+        function handleMouseDown(e) {
+            e.preventDefault();
+            isBatchMode = true;
+            const card = e.target.closest('.card');
+            if (card && card.dataset.key) {
+                batchSnapshot = [...litCards];
+                const key = card.dataset.key;
+                if (litCards.has(key)) {
+                    litCards.delete(key);
+                    card.classList.remove('lit');
+                } else {
+                    litCards.add(key);
+                    card.classList.add('lit');
+                    addJustToggled(card);
+                }
+                updateProgress();
+                updateSaveSlots();
+                lastBatchCard = card;
+            }
+        }
+
+        function handleMouseEnter(e) {
+            if (!isBatchMode || !lastBatchCard) return;
+            const card = e.target.closest('.card');
+            if (card && card !== lastBatchCard && card.dataset.key) {
+                const key = card.dataset.key;
+                if (!litCards.has(key)) {
+                    litCards.add(key);
+                    card.classList.add('lit');
+                    addJustToggled(card);
+                    updateProgress();
+                    updateSaveSlots();
+                }
+                lastBatchCard = card;
+            }
+        }
+
+        function handleMouseUp() {
+            if (batchSnapshot) {
+                saveHistory();
+                batchSnapshot = null;
+            }
+            isBatchMode = false;
+            lastBatchCard = null;
+        }
+
+        function toggleCard(card) {
+            const key = card.dataset.key;
+            if (!key) return;
+
+            if (litCards.has(key)) {
+                litCards.delete(key);
+                card.classList.remove('lit');
+            } else {
+                litCards.add(key);
+                card.classList.add('lit');
+            }
+
+            updateProgress();
+            updateSaveSlots();
+        }
+
+        function updateProgress() {
+            // 54张牌（不含大王小王）
+            const count = [...litCards].filter(k => k !== 'bigKing' && k !== 'smallKing').length;
+            document.getElementById('litCount').textContent = count;
+        }
+
+        function resetAll() {
+            if (confirm('重置图鉴？')) {
+                saveHistory();
+                litCards.clear();
+                document.querySelectorAll('.card.lit').forEach(c => c.classList.remove('lit'));
+                updateProgress();
+                updateSaveSlots();
+                saveState();
+            }
+        }
+
+        document.addEventListener('mouseup', () => {
+            handleMouseUp();
+            isDraggingScroll = false;
+            document.body.style.cursor = '';
+        });
+        document.addEventListener('mouseleave', () => {
+            handleMouseUp();
+            isDraggingScroll = false;
+        });
+
+        // 滚动条功能
+        const scrollTrack = document.getElementById('scrollTrack');
+        const scrollThumb = document.getElementById('scrollThumb');
+        const cardGrid = document.getElementById('cardGrid');
+        let isDraggingScroll = false;
+        let scrollStartY = 0;
+        let thumbStartY = 0;
+
+        function updateScrollThumb() {
+            const grid = cardGrid;
+            const trackHeight = scrollTrack.offsetHeight;
+            const thumbHeight = Math.max((grid.clientHeight / grid.scrollHeight) * trackHeight, 30);
+            const maxThumbTop = trackHeight - thumbHeight;
+            const thumbTop = (grid.scrollTop / (grid.scrollHeight - grid.clientHeight)) * maxThumbTop;
+
+            scrollThumb.style.height = thumbHeight + 'px';
+            scrollThumb.style.top = thumbTop + 'px';
+        }
+
+        cardGrid.addEventListener('scroll', updateScrollThumb);
+
+        scrollThumb.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            isDraggingScroll = true;
+            scrollStartY = e.touches ? e.touches[0].clientY : e.clientY;
+            thumbStartY = scrollThumb.offsetTop;
+        }, { passive: false });
+
+        scrollThumb.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            isDraggingScroll = true;
+            scrollStartY = e.clientY;
+            thumbStartY = scrollThumb.offsetTop;
+            document.body.style.cursor = 'grabbing';
+        });
+
+        scrollTrack.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touchY = e.touches[0].clientY;
+            const trackRect = scrollTrack.getBoundingClientRect();
+            const clickY = touchY - trackRect.top;
+            const thumbHeight = scrollThumb.offsetHeight;
+            const thumbTop = scrollThumb.offsetTop;
+            const maxThumbTop = trackRect.height - thumbHeight;
+
+            // 点击滚动条空白区域，跳转
+            if (clickY < thumbTop || clickY > thumbTop + thumbHeight) {
+                const targetThumbTop = clickY - thumbHeight / 2;
+                const grid = cardGrid;
+                const ratio = Math.max(0, Math.min(1, targetThumbTop / maxThumbTop));
+                grid.scrollTop = ratio * (grid.scrollHeight - grid.clientHeight);
+            }
+        }, { passive: false });
+
+        scrollTrack.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const clickY = e.clientY;
+            const trackRect = scrollTrack.getBoundingClientRect();
+            const clickRelativeY = clickY - trackRect.top;
+            const thumbHeight = scrollThumb.offsetHeight;
+            const thumbTop = scrollThumb.offsetTop;
+            const maxThumbTop = trackRect.height - thumbHeight;
+
+            // 点击滚动条空白区域，跳转
+            if (clickRelativeY < thumbTop || clickRelativeY > thumbTop + thumbHeight) {
+                const targetThumbTop = clickRelativeY - thumbHeight / 2;
+                const grid = cardGrid;
+                const ratio = Math.max(0, Math.min(1, targetThumbTop / maxThumbTop));
+                grid.scrollTop = ratio * (grid.scrollHeight - grid.clientHeight);
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isDraggingScroll) return;
+            e.preventDefault();
+            const touchY = e.touches[0].clientY;
+            const deltaY = touchY - scrollStartY;
+            const grid = cardGrid;
+            const trackHeight = scrollTrack.offsetHeight;
+            const thumbHeight = scrollThumb.offsetHeight;
+            const maxThumbTop = trackHeight - thumbHeight;
+            const newThumbTop = Math.max(0, Math.min(maxThumbTop, thumbStartY + deltaY));
+            const ratio = newThumbTop / maxThumbTop;
+
+            grid.scrollTop = ratio * (grid.scrollHeight - grid.clientHeight);
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            isDraggingScroll = false;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingScroll) return;
+            e.preventDefault();
+            const deltaY = e.clientY - scrollStartY;
+            const grid = cardGrid;
+            const trackHeight = scrollTrack.offsetHeight;
+            const thumbHeight = scrollThumb.offsetHeight;
+            const maxThumbTop = trackHeight - thumbHeight;
+            const newThumbTop = Math.max(0, Math.min(maxThumbTop, thumbStartY + deltaY));
+            const ratio = newThumbTop / maxThumbTop;
+
+            grid.scrollTop = ratio * (grid.scrollHeight - grid.clientHeight);
+        });
+
+        // 鼠标滚轮支持
+        cardGrid.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY || e.wheelDelta;
+            cardGrid.scrollTop += delta * 0.5;
+        }, { passive: false });
+
+        // 初始化
+        setTimeout(updateScrollThumb, 100);
+        window.addEventListener('resize', updateScrollThumb);
+
+        loadState();
+    </script>
+</body>
+</html>
