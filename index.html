@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>【菜菜大王】阿萨拉牌图鉴</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: url('https://img-tc.tapimg.com/market/images/6fd483d211a81387e1775b54f5d3e61b.jpg/_tap_screenshot.jpg') no-repeat center center;
+            background-size: cover;
+            min-height: 100vh;
+            padding: 6px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .progress {
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        .progress-count {
+            color: #32CD32;
+            font-weight: 700;
+        }
+
+        /* 布局：左边栏 + 主网格 + 右边栏 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 40px 1fr 60px;
+            gap: 4px;
+        }
+
+        /* 左边栏 */
+        .left-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .save-slot {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .save-slot.auto {
+            background: #e8f5e9;
+            border-color: #a5d6a7;
+        }
+
+        .save-slot.manual {
+            background: #fff3e0;
+            border-color: #ffcc80;
+        }
+
+        .save-slot:hover {
+            transform: scale(1.05);
+        }
+
+        .save-slot span {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .save-slot .count {
+            font-size: 0.45rem;
+            color: #666;
+        }
+
+        /* 主网格 */
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 2px;
+            background: #aaa;
+            padding: 2px;
+            border-radius: 4px;
+        }
+
+        .suit-title {
+            text-align: center;
+            padding: 2px;
+            font-size: 0.5rem;
+            font-weight: 700;
+            background: #e8e8e8;
+            border-radius: 3px;
+        }
+
+        .card {
+            aspect-ratio: 16/9;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.45rem;
+            font-weight: 700;
+            background: white;
+            position: relative;
+        }
+
+        .card.lit {
+            background: #32CD32 !important;
+        }
+
+        .card.lit::after {
+            content: "✓";
+            position: absolute;
+            top: 1px;
+            right: 1px;
+            width: 7px;
+            height: 7px;
+            background: white;
+            color: #228B22;
+            border-radius: 50%;
+            font-size: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card.big-king,
+        .card.small-king {
+            background: linear-gradient(135deg, #ffd700, #ffb347);
+            font-size: 0.5rem;
+            font-weight: 800;
+            color: #8b4513;
+        }
+
+        .card.big-king span,
+        .card.small-king span {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .empty-cell {
+            background: transparent;
+        }
+
+        /* 右边栏 */
+        .right-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .action-btn {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: #f5f5f5;
+            transform: scale(1.05);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .action-btn.undo {
+            background: #fff3e0;
+            border-color: #ffcc80;
+        }
+
+        .action-btn.redo {
+            background: #e3f2fd;
+            border-color: #90caf9;
+        }
+
+        .action-btn.load {
+            background: #fce4ec;
+            border-color: #f48fb1;
+        }
+
+        .action-btn .icon {
+            font-size: 0.8rem;
+            margin-bottom: 2px;
+        }
+
+        /* 底部 */
+        .footer {
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .reset-btn {
+            background: white;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+            padding: 3px 10px;
+            font-size: 0.65rem;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .hint {
+            text-align: center;
+            color: #999;
+            font-size: 0.55rem;
+            margin-top: 3px;
+        }
+
+        /* Toast提示 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🃏【菜菜大王】阿萨拉牌图鉴</h1>
+            <div class="progress">
+                已点亮：<span class="progress-count" id="litCount">0</span> / 56
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <!-- 左边栏：保存槽 -->
+            <div class="left-sidebar">
+                <div class="save-slot manual" onclick="saveManual()">
+                    <span>保存</span>
+                    <span class="count" id="manualCount">未保存</span>
+                </div>
+            </div>
+
+            <!-- 主网格 -->
+            <div class="main-grid" id="cardGrid"></div>
+
+            <!-- 右边栏：操作按钮 -->
+            <div class="right-sidebar">
+                <div class="action-btn undo" onclick="undo()" id="undoBtn" disabled>
+                    <span class="icon">↩</span>
+                    <span>撤回</span>
+                </div>
+                <div class="action-btn redo" onclick="redo()" id="redoBtn" disabled>
+                    <span class="icon">↪</span>
+                    <span>重做</span>
+                </div>
+                <div class="action-btn load" onclick="loadManual()">
+                    <span class="icon">📂</span>
+                    <span>读取</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <button class="reset-btn" onclick="resetAll()">重置</button>
+        </div>
+        <p class="hint">点击/滑动点亮 | 关闭自动保存 | 左侧保存</p>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const SUITS = ['♠', '♥', '♣', '♦'];
+        const VALUES = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+
+        let litCards = new Set();
+        let isBatchMode = false;
+        let lastBatchCard = null;
+        let mouseDown = false;
+
+        // 撤销/重做历史
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 50;
+
+        // 手动保存的数据
+        let manualSave = null;
+
+        // 批量操作前的状态快照（用于一次性保存整步）
+        let batchSnapshot = null;
+
+        function loadState() {
+            // 加载自动保存
+            const saved = localStorage.getItem('caicaiLitCards_v10');
+            if (saved) litCards = new Set(JSON.parse(saved));
+
+            // 加载历史
+            const historySaved = localStorage.getItem('caicaiLitCards_history');
+            if (historySaved) {
+                const data = JSON.parse(historySaved);
+                history = data.history || [];
+                historyIndex = data.historyIndex || -1;
+            }
+
+            // 加载手动保存
+            const manualSaved = localStorage.getItem('caicaiLitCards_manual');
+            if (manualSaved) manualSave = new Set(JSON.parse(manualSaved));
+
+            render();
+            updateProgress();
+            updateHistoryButtons();
+            updateSaveSlots();
+        }
+
+        function saveState() {
+            localStorage.setItem('caicaiLitCards_v10', JSON.stringify([...litCards]));
+            updateSaveSlots();
+        }
+
+        function saveHistory() {
+            // 添加到历史
+            const currentState = [...litCards];
+            history = history.slice(0, historyIndex + 1);
+            history.push(currentState);
+            if (history.length > MAX_HISTORY) {
+                history.shift();
+            } else {
+                historyIndex++;
+            }
+            localStorage.setItem('caicaiLitCards_history', JSON.stringify({history, historyIndex}));
+            updateHistoryButtons();
+        }
+
+        function undo() {
+            if (historyIndex < 0) return;
+            if (historyIndex === history.length - 1) {
+                // 当前状态也要保存
+                history.push([...litCards]);
+            }
+            historyIndex--;
+            litCards = new Set(history[historyIndex] || []);
+            render();
+            updateProgress();
+            saveState();
+            updateHistoryButtons();
+            showToast('已撤回');
+        }
+
+        function redo() {
+            if (historyIndex >= history.length - 1) return;
+            historyIndex++;
+            litCards = new Set(history[historyIndex] || []);
+            render();
+            updateProgress();
+            saveState();
+            updateHistoryButtons();
+            showToast('已重做');
+        }
+
+        function updateHistoryButtons() {
+            document.getElementById('undoBtn').disabled = historyIndex < 0;
+            document.getElementById('redoBtn').disabled = historyIndex >= history.length - 1;
+        }
+
+        // 手动保存
+        function saveManual() {
+            manualSave = new Set([...litCards]);
+            localStorage.setItem('caicaiLitCards_manual', JSON.stringify([...manualSave]));
+            updateSaveSlots();
+            showToast('已保存 ' + litCards.size + ' 张');
+        }
+
+        // 离开网页时自动保存当前进度
+        window.addEventListener('beforeunload', () => {
+            saveState();
+        });
+
+        // 读取手动存档
+        function loadManual() {
+            if (!manualSave || manualSave.size === 0) {
+                showToast('无手动存档');
+                return;
+            }
+            saveHistory();
+            litCards = new Set([...manualSave]);
+            render();
+            updateProgress();
+            saveState();
+            showToast('已读取 ' + litCards.size + ' 张');
+        }
+
+        function updateSaveSlots() {
+            document.getElementById('manualCount').textContent = manualSave ? manualSave.size + '张' : '未保存';
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1500);
+        }
+
+        function render() {
+            const grid = document.getElementById('cardGrid');
+            grid.innerHTML = '';
+
+            const bigKingTitle = document.createElement('div');
+            bigKingTitle.className = 'suit-title';
+            bigKingTitle.textContent = '王';
+            grid.appendChild(bigKingTitle);
+
+            SUITS.forEach(s => {
+                const t = document.createElement('div');
+                t.className = 'suit-title';
+                t.textContent = s;
+                grid.appendChild(t);
+            });
+
+            const smallKingTitle = document.createElement('div');
+            smallKingTitle.className = 'suit-title';
+            smallKingTitle.textContent = '王';
+            grid.appendChild(smallKingTitle);
+
+            [...VALUES].reverse().forEach(value => {
+                if (value === '2') {
+                    const bigKing = createCard('bigKing', 'big-king', '<span>大</span>');
+                    grid.appendChild(bigKing);
+                } else {
+                    const empty = document.createElement('div');
+                    empty.className = 'empty-cell';
+                    grid.appendChild(empty);
+                }
+
+                SUITS.forEach((_, suitIdx) => {
+                    const key = `${suitIdx}_${value}`;
+                    const card = createCard(key, '', value);
+                    if (suitIdx === 1 || suitIdx === 3) {
+                        card.style.color = '#c0392b';
+                    } else {
+                        card.style.color = '#2c3e50';
+                    }
+                    grid.appendChild(card);
+                });
+
+                if (value === '2') {
+                    const smallKing = createCard('smallKing', 'small-king', '<span>小</span>');
+                    grid.appendChild(smallKing);
+                } else {
+                    const empty = document.createElement('div');
+                    empty.className = 'empty-cell';
+                    grid.appendChild(empty);
+                }
+            });
+        }
+
+        function createCard(key, extraClass, text) {
+            const card = document.createElement('div');
+            card.className = 'card ' + extraClass;
+            card.dataset.key = key;
+            card.innerHTML = text;
+
+            if (litCards.has(key)) {
+                card.classList.add('lit');
+            }
+
+            card.addEventListener('touchstart', handleTouchStart, { passive: false });
+            card.addEventListener('touchmove', handleTouchMove, { passive: false });
+            card.addEventListener('touchend', handleTouchEnd);
+            card.addEventListener('mousedown', handleMouseDown);
+            card.addEventListener('mouseover', handleMouseOver);
+
+            return card;
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            isBatchMode = true;
+            const card = e.target.closest('.card');
+            if (card) {
+                batchSnapshot = [...litCards]; // 保存操作前状态
+                toggleCard(card);
+            }
+        }
+
+        function handleTouchMove(e) {
+            if (!isBatchMode) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const card = element ? element.closest('.card') : null;
+            if (card && card !== lastBatchCard) {
+                toggleCard(card);
+                lastBatchCard = card;
+            }
+        }
+
+        function handleTouchEnd() {
+            if (batchSnapshot) {
+                // 整步保存：直接保存当前完整状态
+                saveHistory();
+                batchSnapshot = null;
+            }
+            isBatchMode = false;
+            lastBatchCard = null;
+        }
+
+        function handleMouseDown(e) {
+            const card = e.target.closest('.card');
+            if (!card) return;
+            isBatchMode = true;
+            mouseDown = true;
+            lastBatchCard = card;
+            batchSnapshot = [...litCards]; // 保存操作前状态
+            toggleCard(card);
+        }
+
+        function handleMouseOver(e) {
+            if (!mouseDown || !isBatchMode) return;
+            const card = e.target.closest('.card');
+            if (card && card !== lastBatchCard) {
+                toggleCard(card);
+                lastBatchCard = card;
+            }
+        }
+
+        function handleMouseUp() {
+            if (batchSnapshot) {
+                // 整步保存：直接保存当前完整状态
+                saveHistory();
+                batchSnapshot = null;
+            }
+            mouseDown = false;
+            isBatchMode = false;
+            lastBatchCard = null;
+        }
+
+        function toggleCard(card) {
+            const key = card.dataset.key;
+            if (!key) return;
+
+            if (litCards.has(key)) {
+                litCards.delete(key);
+                card.classList.remove('lit');
+            } else {
+                litCards.add(key);
+                card.classList.add('lit');
+            }
+
+            updateProgress();
+            updateSaveSlots();
+        }
+
+        function updateProgress() {
+            // 54张牌 = 4花色×13点数 + 大王小王
+            document.getElementById('litCount').textContent = litCards.size;
+        }
+
+        function resetAll() {
+            if (confirm('重置图鉴？')) {
+                saveHistory();
+                litCards.clear();
+                document.querySelectorAll('.card.lit').forEach(c => c.classList.remove('lit'));
+                updateProgress();
+                updateSaveSlots();
+                saveState();
+            }
+        }
+
+        document.addEventListener('mouseup', handleMouseUp);
+
+        loadState();
+    </script>
+</body>
+</html>
